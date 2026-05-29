@@ -23,6 +23,7 @@ import (
 	"github.com/dobyte/due/v2/network"
 	"github.com/dobyte/due/v2/registry"
 	"github.com/dobyte/due/v2/session"
+	duetrace "github.com/dobyte/due/v2/trace"
 )
 
 type Gate struct {
@@ -174,7 +175,8 @@ func (g *Gate) handleDisconnect(conn network.Conn) {
 func (g *Gate) handleReceive(conn network.Conn, data []byte) {
 	cid, uid := conn.ID(), conn.UID()
 
-	g.proxy.deliver(g.ctx, cid, uid, data)
+	ctx := duetrace.WithTraceContext(g.ctx, duetrace.TraceContextFromConn(conn))
+	g.proxy.deliver(ctx, cid, uid, data)
 }
 
 // 启动传输服务器
