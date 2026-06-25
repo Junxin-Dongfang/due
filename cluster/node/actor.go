@@ -1,6 +1,7 @@
 package node
 
 import (
+	"context"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -207,7 +208,7 @@ func (a *Actor) Push(uid int64, message *cluster.Message) error {
 		return err
 	}
 
-	a.scheduler.node.router.deliver("", a.scheduler.node.opts.id, a.PID(), 0, uid, message.Seq, message.Route, buf)
+	a.scheduler.node.router.deliver(context.Background(), "", a.scheduler.node.opts.id, a.PID(), 0, uid, message.Seq, message.Route, buf)
 
 	return nil
 }

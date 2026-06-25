@@ -236,13 +236,17 @@ func (l *NodeLinker) Trigger(ctx context.Context, args *TriggerArgs) error {
 				return err
 			}
 
-			return client.Trigger(ctx, args.Event, args.CID, args.UID)
+			if err = client.Trigger(ctx, args.Event, args.CID, args.UID); err != nil {
+				return err
+			}
+
+			return nil
 		})
 
 		return true
 	})
 
-	return eg.Wait()
+	return nil
 }
 
 // GetState 获取节点状态
@@ -486,22 +490,24 @@ func (l *NodeLinker) WatchUserLocate() {
 			case <-l.ctx.Done():
 				return
 			default:
-				// exec watch
-			}
+				events, err := watcher.Next()
+				if err != nil {
+					if errors.Is(err, context.Canceled) {
+						return
+					} else {
+						continue
+					}
+				}
 
-			events, err := watcher.Next()
-			if err != nil {
-				continue
-			}
-
-			for _, event := range events {
-				switch event.Type {
-				case locate.BindNode:
-					l.doStoreSource(event.UID, event.InsName, event.InsID)
-				case locate.UnbindNode:
-					l.doDeleteSource(event.UID, event.InsName, event.InsID)
-				default:
-					// ignore
+				for _, event := range events {
+					switch event.Type {
+					case locate.BindNode:
+						l.doStoreSource(event.UID, event.InsName, event.InsID)
+					case locate.UnbindNode:
+						l.doDeleteSource(event.UID, event.InsName, event.InsID)
+					default:
+						// ignore
+					}
 				}
 			}
 		}
@@ -524,15 +530,17 @@ func (l *NodeLinker) WatchClusterInstance() {
 			case <-l.ctx.Done():
 				return
 			default:
-				// exec watch
-			}
+				services, err := watcher.Next()
+				if err != nil {
+					if errors.Is(err, context.Canceled) {
+						return
+					} else {
+						continue
+					}
+				}
 
-			services, err := watcher.Next()
-			if err != nil {
-				continue
+				l.dispatcher.ReplaceServices(services...)
 			}
-
-			l.dispatcher.ReplaceServices(services...)
 		}
 	}()
 }

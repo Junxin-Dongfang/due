@@ -9,6 +9,7 @@ import (
 	"github.com/dobyte/due/v2/internal/transporter/internal/protocol"
 	"github.com/dobyte/due/v2/internal/transporter/internal/route"
 	"github.com/dobyte/due/v2/internal/transporter/internal/server"
+	duetrace "github.com/dobyte/due/v2/trace"
 )
 
 type Server struct {
@@ -61,7 +62,7 @@ func (s *Server) trigger(conn *server.Conn, data []byte) error {
 
 // 投递消息
 func (s *Server) deliver(conn *server.Conn, data []byte) error {
-	seq, cid, uid, message, err := protocol.DecodeDeliverReq(data)
+	seq, cid, uid, tc, message, err := protocol.DecodeDeliverReq(data)
 	if err != nil {
 		return err
 	}
@@ -80,7 +81,8 @@ func (s *Server) deliver(conn *server.Conn, data []byte) error {
 		return errors.ErrIllegalRequest
 	}
 
-	if err = s.provider.Deliver(context.Background(), gid, nid, cid, uid, message); seq == 0 {
+	ctx := duetrace.WithTraceContext(context.Background(), tc)
+	if err = s.provider.Deliver(ctx, gid, nid, cid, uid, message); seq == 0 {
 		return err
 	} else {
 		return conn.Send(protocol.EncodeDeliverRes(seq, codes.ErrorToCode(err)))

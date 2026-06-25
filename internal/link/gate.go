@@ -824,22 +824,24 @@ func (l *GateLinker) WatchUserLocate() {
 			case <-l.ctx.Done():
 				return
 			default:
-				// exec watch
-			}
+				events, err := watcher.Next()
+				if err != nil {
+					if errors.Is(err, context.Canceled) {
+						return
+					} else {
+						continue
+					}
+				}
 
-			events, err := watcher.Next()
-			if err != nil {
-				continue
-			}
-
-			for _, event := range events {
-				switch event.Type {
-				case locate.BindGate:
-					l.sources.Store(event.UID, event.InsID)
-				case locate.UnbindGate:
-					l.sources.Delete(event.UID)
-				default:
-					// ignore
+				for _, event := range events {
+					switch event.Type {
+					case locate.BindGate:
+						l.sources.Store(event.UID, event.InsID)
+					case locate.UnbindGate:
+						l.sources.Delete(event.UID)
+					default:
+						// ignore
+					}
 				}
 			}
 		}
@@ -862,15 +864,17 @@ func (l *GateLinker) WatchClusterInstance() {
 			case <-l.ctx.Done():
 				return
 			default:
-				// exec watch
-			}
+				services, err := watcher.Next()
+				if err != nil {
+					if errors.Is(err, context.Canceled) {
+						return
+					} else {
+						continue
+					}
+				}
 
-			services, err := watcher.Next()
-			if err != nil {
-				continue
+				l.dispatcher.ReplaceServices(services...)
 			}
-
-			l.dispatcher.ReplaceServices(services...)
 		}
 	}()
 }
