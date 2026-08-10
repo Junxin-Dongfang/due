@@ -1,7 +1,9 @@
 package msgpack
 
 import (
-	"github.com/shamaton/msgpack/v2"
+	"bytes"
+
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 const Name = "msgpack"
@@ -17,7 +19,17 @@ func (codec) Name() string {
 
 // Marshal 编码
 func (codec) Marshal(v any) ([]byte, error) {
-	return msgpack.Marshal(v)
+	var buffer bytes.Buffer
+	encoder := msgpack.NewEncoder(&buffer)
+	// Preserve the compact integer and floating-point representation emitted by
+	// the previous codec so existing peers keep seeing the same MessagePack wire
+	// values while using a decoder without the truncated-fixext panic.
+	encoder.UseCompactInts(true)
+	encoder.UseCompactFloats(true)
+	if err := encoder.Encode(v); err != nil {
+		return nil, err
+	}
+	return buffer.Bytes(), nil
 }
 
 // Unmarshal 解码
