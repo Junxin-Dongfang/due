@@ -19,6 +19,7 @@ const (
 	defaultServerHeartbeatInterval  = "10s"
 	defaultServerHeartbeatMechanism = "resp"
 	defaultServerAuthorizeTimeout   = "0s"
+	defaultServerMaxMessageBytes    = 256 * 1024
 )
 
 const (
@@ -33,6 +34,7 @@ const (
 	defaultServerHeartbeatIntervalKey  = "etc.network.ws.server.heartbeatInterval"
 	defaultServerHeartbeatMechanismKey = "etc.network.ws.server.heartbeatMechanism"
 	defaultServerAuthorizeTimeoutKey   = "etc.network.ws.server.authorizeTimeout"
+	defaultServerMaxMessageBytesKey    = "etc.network.ws.server.maxMessageBytes"
 )
 
 const (
@@ -58,6 +60,7 @@ type serverOptions struct {
 	heartbeatInterval  time.Duration      // 心跳间隔时间，默认10s
 	heartbeatMechanism HeartbeatMechanism // 心跳机制，默认resp
 	authorizeTimeout   time.Duration      // 授权超时时间，默认0s，不检测
+	maxMessageBytes    int               // 单条消息最大字节数，超过后连接将被关闭，默认256KB
 }
 
 func defaultServerOptions() *serverOptions {
@@ -107,6 +110,12 @@ func defaultServerOptions() *serverOptions {
 		opts.authorizeTimeout = authorizeTimeout
 	} else {
 		opts.authorizeTimeout = xconv.Duration(defaultServerAuthorizeTimeout)
+	}
+
+	if maxMessageBytes := etc.Get(defaultServerMaxMessageBytesKey, defaultServerMaxMessageBytes).Int(); maxMessageBytes > 0 {
+		opts.maxMessageBytes = maxMessageBytes
+	} else {
+		opts.maxMessageBytes = defaultServerMaxMessageBytes
 	}
 
 	origins := etc.Get(defaultServerCheckOriginsKey, []string{defaultServerCheckOrigin}).Strings()
@@ -216,6 +225,17 @@ func WithServerAuthorizeTimeout(authorizeTimeout time.Duration) ServerOption {
 			o.authorizeTimeout = authorizeTimeout
 		} else {
 			log.Warnf("the specified authorizeTimeout is less than zero and will be ignored")
+		}
+	}
+}
+
+// WithServerMaxMessageBytes 设置单条消息最大字节数
+func WithServerMaxMessageBytes(maxMessageBytes int) ServerOption {
+	return func(o *serverOptions) {
+		if maxMessageBytes > 0 {
+			o.maxMessageBytes = maxMessageBytes
+		} else {
+			log.Warnf("the specified maxMessageBytes is less than zero and will be ignored")
 		}
 	}
 }
