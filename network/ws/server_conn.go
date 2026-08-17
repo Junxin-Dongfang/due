@@ -180,6 +180,11 @@ func (c *serverConn) init(cm *serverConnMgr, id int64, conn *websocket.Conn) {
 	c.state.Store(int32(network.ConnOpened))
 	c.conn = conn
 	c.connMgr = cm
+
+	// 限制单条入站消息的最大字节数，防止未认证连接发送超大消息耗尽内存
+	if cm.server.opts.maxMessageBytes > 0 {
+		conn.SetReadLimit(int64(cm.server.opts.maxMessageBytes))
+	}
 	c.lowPriorityQueue = make(chan *task, c.connMgr.server.opts.writeQueueSize)
 	c.highPriorityQueue = make(chan *task, c.connMgr.server.opts.writeQueueSize)
 	c.done = make(chan struct{})
